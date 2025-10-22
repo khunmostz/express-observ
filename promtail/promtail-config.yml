@@ -1,0 +1,46 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        # เพิ่ม filters เพื่อกรองเฉพาะ container ที่ต้องการจริงๆ
+        # ซึ่งจะดีกว่าการใช้ relabeling ในบางกรณี
+        # แต่ relabeling ที่คุณทำไว้ก็ใช้ได้เหมือนกันครับ ผมจะเก็บไว้
+        # filters:
+        #   - name: name
+        #     values: ["app"]
+
+    relabel_configs:
+      # เก็บเฉพาะ container ที่ชื่อขึ้นต้นด้วย "app"
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/app.*' # แก้ regex ให้แม่นยำขึ้นเล็กน้อย โดยเอา optional group ออก
+        action: keep
+
+      # สร้าง label ต่างๆ จาก docker meta labels
+      # เพื่อให้ค้นหาใน Grafana ได้ง่าย
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+
+      # สร้าง label `service` จาก docker label ที่เราตั้งไว้ใน docker-compose
+      - source_labels: ['__meta_docker_container_label_service']
+        target_label: 'service'
+
+      # สร้าง label `job` ที่มีความหมายมากขึ้น
+      - source_labels: ['__meta_docker_container_label_service']
+        target_label: 'job'
+        replacement: '${1}_logs' # จะได้เป็น job="app_logs"
+
+    # Pipeline ที่เรียบง่ายและได้ผล
+    pipeline_stages:
+      - docker: {}

@@ -1,0 +1,88 @@
+version: "3.9"
+services:
+  app:
+    build: ./app
+    container_name: app
+    environment:
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4318/v1/traces
+    ports:
+      - "3000:3000"
+    # เพิ่ม logging driver
+    logging:
+      driver: json-file
+      options:
+        labels: "service"
+    labels:
+      service: "app"
+    depends_on:
+      - otel-collector
+    networks: [ obs ]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks: [ obs ]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks: [ obs ]
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: loki
+    command: [ "-config.file=/etc/loki/local-config.yaml" ]
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - ./loki-data:/var/loki
+    ports:
+      - "3100:3100"
+    networks: [ obs ]
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: promtail
+    user: root  # เพิ่ม root permission
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: [ "-config.file=/etc/promtail/config.yml" ]
+    depends_on:
+      - loki
+    networks: [ obs ]
+
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: tempo
+    command: [ "-config.expand-env=true", "-config.file=/etc/tempo.yml" ]
+    volumes:
+      - ./otel-collector/tempo.yml:/etc/tempo.yml:ro
+    ports:
+      - "3200:3200"
+    networks: [ obs ]
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.102.1
+    container_name: otel-collector
+    command: [ "--config=/etc/otelcol/config.yaml" ]
+    volumes:
+      - ./otel-collector/collector-config.yml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4318:4318"
+    depends_on:
+      - tempo
+    networks: [ obs ]
+
+networks:
+  obs: {}

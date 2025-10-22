@@ -1,0 +1,19 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+
+processors:
+  batch: {}
+
+exporters:
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+  debug: {}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/tempo, debug]

@@ -1,0 +1,20 @@
+{
+  "name": "observability-express",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --require ./otel.js index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pino": "^9.3.2",
+    "prom-client": "^15.1.2",
+    "@opentelemetry/api": "^1.8.0",
+    "@opentelemetry/sdk-node": "^0.54.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.55.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.54.0",
+    "@opentelemetry/resources": "^1.8.0",
+    "@opentelemetry/semantic-conventions": "^1.25.1"
+  }
+}
